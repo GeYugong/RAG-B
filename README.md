@@ -1,7 +1,7 @@
 # RAG-B
 
 一个可运行的 RAG-B 示例项目：
-- 检索阶段支持 embedding API（默认）或 TF-IDF（兜底）
+- 检索阶段使用 embedding API
 - 生成阶段接入 LLM API（默认 DeepSeek）
 
 ## 1. 改造目标
@@ -22,24 +22,36 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
+本项目仅需：
+- `numpy`
+- `requests`
+
 ## 4. 配置 API（默认低成本 DeepSeek）
 
-先配置统一 key：
+先配置生成 key（DeepSeek）：
 
 ```powershell
-$env:DEEPSEEK_API_KEY = "你的key"
+$env:DEEPSEEK_API_KEY = "你的deepseek key"
+```
+
+如果你本机配置过不可用代理，先清理（很重要）：
+
+```powershell
+Remove-Item Env:HTTP_PROXY -ErrorAction SilentlyContinue
+Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
+Remove-Item Env:ALL_PROXY -ErrorAction SilentlyContinue
 ```
 
 默认配置：
-- embedding: `https://api.deepseek.com/v1` + `deepseek-embedding`
+- embedding: `https://api.ppio.com/openai/v1` + `baai/bge-m3`
 - generation: `https://api.deepseek.com/v1` + `deepseek-chat`
 
 如需覆盖，可设置：
 
 ```powershell
 $env:EMBEDDING_API_KEY = "你的embedding key"
-$env:EMBEDDING_BASE_URL = "https://api.deepseek.com/v1"
-$env:EMBEDDING_MODEL = "deepseek-embedding"
+$env:EMBEDDING_BASE_URL = "https://api.ppio.com/openai/v1"
+$env:EMBEDDING_MODEL = "baai/bge-m3"
 
 $env:GENERATE_API_KEY = "你的generation key"
 $env:GENERATE_BASE_URL = "https://api.deepseek.com/v1"
@@ -59,13 +71,6 @@ python src/ingest.py
 - `data/index/meta.json`
 - `data/index/index_params.json`
 
-如需回退本地 TF-IDF：
-
-```powershell
-$env:USE_EMBEDDING_API = "0"
-python src/ingest.py
-```
-
 ## 6. 运行问答（Retrieve + Generate）
 
 ```powershell
@@ -77,10 +82,20 @@ python src/rag.py
 - 再调用生成模型产出最终答案
 - 同时打印召回证据片段
 
+说明：
+- embedding 不再回退使用 `DEEPSEEK_API_KEY`，必须单独配置 `EMBEDDING_API_KEY`
+- generation 默认使用 `DEEPSEEK_API_KEY`（或显式 `GENERATE_API_KEY`）
+
 ## 7. 低成本建议
 
-- 默认模型已设为 `deepseek-chat`（生成）+ `deepseek-embedding`（召回）
+- 默认模型已设为 `deepseek-chat`（生成）+ `baai/bge-m3`（召回）
 - 如果后续你要切换供应商，只需替换环境变量，不用改代码
+
+## 9. 健康检查
+
+```powershell
+python src/healthcheck.py
+```
 
 ## 8. 项目结构
 

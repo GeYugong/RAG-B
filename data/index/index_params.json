@@ -1,6 +1,7 @@
 {
-  "kind": "tfidf",
+  "kind": "embedding_api",
   "rows": 11,
-  "cols": 783,
-  "vectorizer_path": "data\\index\\tfidf_vectorizer.pkl"
+  "cols": 1024,
+  "embed_matrix_path": "data\\index\\embed_matrix.npy",
+  "embedding_model": "text-embedding-v4"
 }

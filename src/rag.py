@@ -1,19 +1,21 @@
 import json
 import os
-import pickle
 from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
 import requests
-from scipy.sparse import load_npz
 
 ROOT = Path(__file__).resolve().parent.parent
-MATRIX_PATH = ROOT / "data" / "index" / "tfidf_matrix.npz"
 META_PATH = ROOT / "data" / "index" / "meta.json"
 PARAMS_PATH = ROOT / "data" / "index" / "index_params.json"
-VECTORIZER_PATH = ROOT / "data" / "index" / "tfidf_vectorizer.pkl"
 EMBED_MATRIX_PATH = ROOT / "data" / "index" / "embed_matrix.npy"
+
+
+def _post_json(url: str, headers: Dict[str, str], payload: Dict, timeout: float):
+    session = requests.Session()
+    session.trust_env = False
+    return session.post(url, headers=headers, json=payload, timeout=timeout)
 
 
 def _normalize(v: np.ndarray) -> np.ndarray:
@@ -24,45 +26,35 @@ def _normalize(v: np.ndarray) -> np.ndarray:
 
 
 def load_index_and_meta():
-    if not META_PATH.exists() or not PARAMS_PATH.exists():
-        raise RuntimeError("Index not found or incomplete. Run: python src/ingest.py")
+    if not META_PATH.exists() or not PARAMS_PATH.exists() or not EMBED_MATRIX_PATH.exists():
+        raise RuntimeError("Embedding index not found. Run: python src/ingest.py")
 
     meta = json.loads(META_PATH.read_text(encoding="utf-8"))
     params = json.loads(PARAMS_PATH.read_text(encoding="utf-8"))
-    kind = params.get("kind", "tfidf")
+    if params.get("kind") != "embedding_api":
+        raise RuntimeError("Current index is not embedding_api. Rebuild: python src/ingest.py")
 
-    if kind == "embedding_api":
-        if not EMBED_MATRIX_PATH.exists():
-            raise RuntimeError("Embedding index missing. Run: python src/ingest.py")
-        matrix = np.load(str(EMBED_MATRIX_PATH))
-        return kind, matrix, None, meta
-
-    if not MATRIX_PATH.exists() or not VECTORIZER_PATH.exists():
-        raise RuntimeError("TF-IDF index missing. Run: python src/ingest.py")
-
-    matrix = load_npz(str(MATRIX_PATH)).tocsr()
-    with VECTORIZER_PATH.open("rb") as f:
-        vectorizer = pickle.load(f)
-    return "tfidf", matrix, vectorizer, meta
+    matrix = np.load(str(EMBED_MATRIX_PATH))
+    return matrix, meta
 
 
 def embed_query(query: str) -> np.ndarray:
-    api_key = os.getenv("EMBEDDING_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    api_key = os.getenv("EMBEDDING_API_KEY")
     if not api_key:
-        raise RuntimeError("Missing EMBEDDING_API_KEY (or DEEPSEEK_API_KEY).")
+        raise RuntimeError("Missing EMBEDDING_API_KEY.")
 
-    base_url = os.getenv("EMBEDDING_BASE_URL", "https://api.deepseek.com/v1")
-    model = os.getenv("EMBEDDING_MODEL", "deepseek-embedding")
+    base_url = os.getenv("EMBEDDING_BASE_URL", "https://api.ppio.com/openai/v1")
+    model = os.getenv("EMBEDDING_MODEL", "baai/bge-m3")
     timeout = float(os.getenv("EMBEDDING_TIMEOUT", "60"))
+
+    if "api.deepseek.com" in base_url:
+        raise RuntimeError(
+            "DeepSeek 当前不提供 embeddings API。请设置 EMBEDDING_BASE_URL/EMBEDDING_MODEL 到支持 embedding 的 OpenAI 兼容服务。"
+        )
 
     url = f"{base_url.rstrip('/')}/embeddings"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    resp = requests.post(
-        url,
-        headers=headers,
-        json={"model": model, "input": [query]},
-        timeout=timeout,
-    )
+    resp = _post_json(url, headers, {"model": model, "input": [query]}, timeout)
     if resp.status_code >= 300:
         raise RuntimeError(f"Embedding API failed: {resp.status_code} {resp.text}")
 
@@ -76,14 +68,9 @@ def embed_query(query: str) -> np.ndarray:
 
 
 def retrieve(query: str, k: int = 4, min_score: float = 1e-9) -> List[Dict]:
-    kind, matrix, vectorizer, meta = load_index_and_meta()
-
-    if kind == "embedding_api":
-        q = embed_query(query)
-        scores = matrix @ q
-    else:
-        q = vectorizer.transform([query])
-        scores = (matrix @ q.T).toarray().ravel()
+    matrix, meta = load_index_and_meta()
+    q = embed_query(query)
+    scores = matrix @ q
 
     positive_idx = np.where(scores > min_score)[0]
     if positive_idx.size == 0:
@@ -112,10 +99,7 @@ def generate_answer(query: str, contexts: List[Dict]) -> str:
 
     api_key = os.getenv("GENERATE_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
-        return (
-            "未配置 GENERATE_API_KEY/DEEPSEEK_API_KEY，返回检索结果：\n\n"
-            f"问题：{query}\n\n上下文：\n{ctx_text}"
-        )
+        raise RuntimeError("Missing GENERATE_API_KEY (or DEEPSEEK_API_KEY).")
 
     base_url = os.getenv("GENERATE_BASE_URL", "https://api.deepseek.com/v1")
     model = os.getenv("GENERATE_MODEL", "deepseek-chat")
@@ -134,10 +118,10 @@ def generate_answer(query: str, contexts: List[Dict]) -> str:
 
     url = f"{base_url.rstrip('/')}/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    resp = requests.post(
+    resp = _post_json(
         url,
-        headers=headers,
-        json={
+        headers,
+        {
             "model": model,
             "messages": [
                 {"role": "system", "content": system_prompt},
@@ -145,7 +129,7 @@ def generate_answer(query: str, contexts: List[Dict]) -> str:
             ],
             "temperature": float(os.getenv("GENERATE_TEMPERATURE", "0.2")),
         },
-        timeout=timeout,
+        timeout,
     )
 
     if resp.status_code >= 300:
@@ -182,3 +166,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
