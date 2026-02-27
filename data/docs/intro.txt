@@ -1,0 +1,29 @@
+Simple-RAG 学习项目资料（intro）
+
+本项目目标
+1. 理解 RAG（Retrieval-Augmented Generation，检索增强生成）的基本流程：
+   - 将文档切分成 chunk
+   - 对 chunk 做向量化（embedding）
+   - 建立向量索引
+   - 对用户问题做向量化并检索最相关的 chunk
+   - 将检索结果作为上下文交给大模型生成答案
+
+为什么要做 RAG
+- 纯大模型回答容易“编造”，尤其遇到训练数据里没有的内容。
+- RAG 可以把“外部知识”（你的文档、手册、业务规则）实时提供给模型，降低胡说概率。
+- RAG 更容易更新：文档更新后重新入库即可。
+
+最小实现（MVP）只需要做到：
+- ingest：读取 docs → chunk → embedding → index 保存
+- retrieve：输入 query → embedding → top-k 检索
+- generate：把 top-k 片段拼成上下文（第一版可以不接大模型）
+
+常见误区
+- chunk 太大：检索命中率下降，且上下文冗长。
+- chunk 太小：语义不完整，模型看不懂。
+- 只用向量检索：对数字、专有名词、精确匹配不稳定，后续可加入 BM25 或 rerank。
+
+建议的调参方向
+- chunk_size 300~800 字符，overlap 50~150
+- top_k 3~8
+- 对检索结果做去重（MMR）与 rerank（交叉编码器/小型重排模型）

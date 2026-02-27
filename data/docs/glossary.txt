@@ -1,0 +1,30 @@
+术语表（Glossary）
+
+RAG（Retrieval-Augmented Generation）
+- 一种“先检索，再生成”的问答范式。
+- 核心思想：把外部文档检索出来作为上下文，让模型基于上下文回答。
+
+Embedding（向量表示）
+- 把文本映射成固定维度的向量。
+- 相似文本在向量空间里距离更近。
+
+Chunk（切分片段）
+- 将长文档拆成较短的片段，便于向量化和检索。
+- 需要平衡：太大 vs 太小。
+
+Vector Index（向量索引）
+- 用于加速最近邻检索（ANN）。
+- 常见实现：FAISS、HNSW、Annoy、ScaNN 等。
+
+Top-k
+- 检索时返回相似度最高的 k 个片段。
+
+Rerank（重排）
+- 在 top-k 的候选结果上用更强但更慢的模型重新排序，提高最终命中率。
+
+MMR（Maximal Marginal Relevance）
+- 在相关性和多样性之间平衡，避免 top-k 全是相似片段。
+
+Hallucination（幻觉/胡说）
+- 模型输出看似合理但没有依据或错误的内容。
+- RAG 可降低但不能消灭。

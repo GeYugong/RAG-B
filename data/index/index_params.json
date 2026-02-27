@@ -1,0 +1,6 @@
+{
+  "kind": "tfidf",
+  "rows": 11,
+  "cols": 783,
+  "vectorizer_path": "data\\index\\tfidf_vectorizer.pkl"
+}

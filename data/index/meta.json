@@ -1,0 +1,57 @@
+[
+  {
+    "source": "data\\docs\\api_spec.txt",
+    "chunk_id": 0,
+    "text": "示例接口规范（API Spec）\n\n背景\n这是一个虚构的“知识库问答服务”接口规范，用于测试 RAG 里对接口文档的检索能力。\n\n1. 文档入库接口\nPOST /v1/ingest\nContent-Type: application/json\n\nRequest JSON:\n{\n  \"collection\": \"default\",\n  \"source\": \"manual\",\n  \"documents\": [\n    {\"doc_id\": \"intro\", \"text\": \"....\"},\n    {\"doc_id\": \"faq\", \"text\": \"....\"}\n  ]\n}\n\nResponse JSON:\n{\n  \"ok\": true,\n  \"collection\": \"default\",\n  \"ingested_docs\": 2,\n  \"chunks\": 37\n}\n\n2. 检索接口\nPOST /v1/retrieve\nContent-Type: application/json\n\nRequest JSON:\n{\n  \"collection\": \"default\",\n  \"query\":"
+  },
+  {
+    "source": "data\\docs\\api_spec.txt",
+    "chunk_id": 1,
+    "text": "nt-Type: application/json\n\nRequest JSON:\n{\n  \"collection\": \"default\",\n  \"query\": \"怎么排查检索不到？\",\n  \"top_k\": 5\n}\n\nResponse JSON:\n{\n  \"ok\": true,\n  \"top_k\": 5,\n  \"results\": [\n    {\"doc_id\": \"faq\", \"chunk_id\": 3, \"score\": 0.82, \"text\": \"...\"},\n    {\"doc_id\": \"intro\", \"chunk_id\": 1, \"score\": 0.76, \"text\": \"...\"}\n  ]\n}\n\n3. 问答接口（RAG）\nPOST /v1/ask\nContent-Type: application/json\n\nRequest JSON:\n{\n  \"collection\": \"default\",\n  \"query\": \"RAG 为什么能减少胡说？\",\n  \"top_k\": 4,\n  \"max_tokens\": 512\n}\n\nResponse JSON:\n{\n  \""
+  },
+  {
+    "source": "data\\docs\\api_spec.txt",
+    "chunk_id": 2,
+    "text": "ery\": \"RAG 为什么能减少胡说？\",\n  \"top_k\": 4,\n  \"max_tokens\": 512\n}\n\nResponse JSON:\n{\n  \"ok\": true,\n  \"answer\": \"....\",\n  \"citations\": [\n    {\"doc_id\": \"intro\", \"chunk_id\": 0},\n    {\"doc_id\": \"faq\", \"chunk_id\": 2}\n  ]\n}\n\n错误码\n- 4001：参数缺失（query 为空或 top_k 非法）\n- 5002：索引不存在（未 ingest 或索引文件损坏）\n- 5003：模型不可用（embedding/LLM 加载失败）"
+  },
+  {
+    "source": "data\\docs\\faq.txt",
+    "chunk_id": 0,
+    "text": "Simple-RAG 常见问题（FAQ）\n\nQ1：为什么我问的问题明明在文档里，但检索不到？\nA：\n1) 文档切分导致：关键句被切到两段里，单段语义不完整。\n2) 文档里用的是同义词，你提问用的是另一个说法，向量不一定能对齐。\n3) top_k 太小：相关段落排在第 5 或第 6，你只取了前 4。\n4) embedding 模型不适合：英文模型对中文效果一般，可换中文或多语模型。\n5) 文档没入库：你忘了重新运行 ingest。\n\nQ2：为什么检索结果看起来相关，但答案还是不对？\nA：\n- RAG 的 G（生成）部分需要明确约束：要求“只根据给定资料回答”，无法回答就说不知道。\n- 如果上下文里有冲突内容，模型可能挑错；需要 rerank 或规则优先级。\n\nQ3：RAG 一定能防止胡说吗？\nA：\n不能。RAG 只是降低概率：\n- 检索错了 → 上下文错 → 模型会“认真地胡说”\n- 检索对了但上下文太长/杂 → 模型可能忽略关键句\n所以要做：评估、去噪、重排、提示词约束、引用证据。\n\nQ4：chunk_size 设多少合适？\nA：\n- 先用 500 字符 + overlap 80\n- "
+  },
+  {
+    "source": "data\\docs\\faq.txt",
+    "chunk_id": 1,
+    "text": "句\n所以要做：评估、去噪、重排、提示词约束、引用证据。\n\nQ4：chunk_size 设多少合适？\nA：\n- 先用 500 字符 + overlap 80\n- 如果你的文档结构明显（标题/段落），可以按段落切更好\n- 技术文档常用按“标题 + 段落”作为 chunk 单位\n\nQ5：向量检索和关键词检索哪个更好？\nA：\n- 关键词（BM25）擅长精确匹配，如错误码、接口名、版本号。\n- 向量擅长语义相似，如“怎么排查连接失败”等表达差异。\n- 实战通常混合：BM25 + 向量，然后 rerank。"
+  },
+  {
+    "source": "data\\docs\\glossary.txt",
+    "chunk_id": 0,
+    "text": "术语表（Glossary）\n\nRAG（Retrieval-Augmented Generation）\n- 一种“先检索，再生成”的问答范式。\n- 核心思想：把外部文档检索出来作为上下文，让模型基于上下文回答。\n\nEmbedding（向量表示）\n- 把文本映射成固定维度的向量。\n- 相似文本在向量空间里距离更近。\n\nChunk（切分片段）\n- 将长文档拆成较短的片段，便于向量化和检索。\n- 需要平衡：太大 vs 太小。\n\nVector Index（向量索引）\n- 用于加速最近邻检索（ANN）。\n- 常见实现：FAISS、HNSW、Annoy、ScaNN 等。\n\nTop-k\n- 检索时返回相似度最高的 k 个片段。\n\nRerank（重排）\n- 在 top-k 的候选结果上用更强但更慢的模型重新排序，提高最终命中率。\n\nMMR（Maximal Marginal Relevance）\n- 在相关性和多样性之间平衡，避免 top-k 全是相似片段。\n\nHallucination（幻觉/胡说）\n- 模型输出看似合理但没有依据或错误的内容。\n- RAG 可降低但不能消灭。"
+  },
+  {
+    "source": "data\\docs\\intro.txt",
+    "chunk_id": 0,
+    "text": "Simple-RAG 学习项目资料（intro）\n\n本项目目标\n1. 理解 RAG（Retrieval-Augmented Generation，检索增强生成）的基本流程：\n   - 将文档切分成 chunk\n   - 对 chunk 做向量化（embedding）\n   - 建立向量索引\n   - 对用户问题做向量化并检索最相关的 chunk\n   - 将检索结果作为上下文交给大模型生成答案\n\n为什么要做 RAG\n- 纯大模型回答容易“编造”，尤其遇到训练数据里没有的内容。\n- RAG 可以把“外部知识”（你的文档、手册、业务规则）实时提供给模型，降低胡说概率。\n- RAG 更容易更新：文档更新后重新入库即可。\n\n最小实现（MVP）只需要做到：\n- ingest：读取 docs → chunk → embedding → index 保存\n- retrieve：输入 query → embedding → top-k 检索\n- generate：把 top-k 片段拼成上下文（第一版可以不接大模型）\n\n常见误区\n- chunk 太大：检索命中率下降，且上下文冗长。\n- chunk 太"
+  },
+  {
+    "source": "data\\docs\\intro.txt",
+    "chunk_id": 1,
+    "text": " generate：把 top-k 片段拼成上下文（第一版可以不接大模型）\n\n常见误区\n- chunk 太大：检索命中率下降，且上下文冗长。\n- chunk 太小：语义不完整，模型看不懂。\n- 只用向量检索：对数字、专有名词、精确匹配不稳定，后续可加入 BM25 或 rerank。\n\n建议的调参方向\n- chunk_size 300~800 字符，overlap 50~150\n- top_k 3~8\n- 对检索结果做去重（MMR）与 rerank（交叉编码器/小型重排模型）"
+  },
+  {
+    "source": "data\\docs\\troubleshooting.txt",
+    "chunk_id": 0,
+    "text": "排障手册（Troubleshooting）\n\n问题 1：PowerShell 里激活 venv 失败\n现象：\n- 输入 source .venv/bin/activate 报错：找不到 source\n原因：\n- source 是 mac/linux 的命令，PowerShell 要用 Activate.ps1\n解决：\n1) Set-ExecutionPolicy -Scope CurrentUser RemoteSigned\n2) .\\.venv\\Scripts\\Activate.ps1\n\n问题 2：pip 安装依赖时出现 ProxyError\n现象：\n- ProxyError('Cannot connect to proxy.', FileNotFoundError(...))\n原因：\n- pip 配置或环境变量设置了无效代理（常见于代理软件卸载残留）\n解决：\n1) pip config list 检查是否有 proxy\n2) pip config unset global.proxy / user.proxy\n3) 清理 HTTP_PROXY / HTTPS_PROXY 环境变量\n"
+  },
+  {
+    "source": "data\\docs\\troubleshooting.txt",
+    "chunk_id": 1,
+    "text": " pip config unset global.proxy / user.proxy\n3) 清理 HTTP_PROXY / HTTPS_PROXY 环境变量\n\n问题 3：Windows 安装 faiss-cpu 失败\n现象：\n- ERROR: No matching distribution found for faiss-cpu\n原因：\n- PyPI 上 Windows 可能没有匹配你 Python 版本的 faiss 轮子\n解决：\n- 用 hnswlib 替代 faiss 作为向量索引（学习原理足够）\n- 或改用 WSL/Ubuntu 环境安装 faiss\n\n问题 4：检索结果重复、相似 chunk 太多\n原因：\n- overlap 导致相邻 chunk 高度重复\n解决：\n- 做去重（例如基于 source+chunk_id 或相似度阈值）\n- 引入 MMR（最大边际相关性）在 top_k 前做多样性选择\n\n问题 5：答案引用资料但仍然偏题\n原因：\n- prompt 没约束、上下文噪声大、或者检索错了\n解决：\n- 让模型必须引用片段编号\n- “无法从资料得出结论就说不知道”\n- "
+  },
+  {
+    "source": "data\\docs\\troubleshooting.txt",
+    "chunk_id": 2,
+    "text": "引用资料但仍然偏题\n原因：\n- prompt 没约束、上下文噪声大、或者检索错了\n解决：\n- 让模型必须引用片段编号\n- “无法从资料得出结论就说不知道”\n- 对检索结果 rerank（比如 cross-encoder）"
+  }
+]

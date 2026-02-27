@@ -1,0 +1,44 @@
+排障手册（Troubleshooting）
+
+问题 1：PowerShell 里激活 venv 失败
+现象：
+- 输入 source .venv/bin/activate 报错：找不到 source
+原因：
+- source 是 mac/linux 的命令，PowerShell 要用 Activate.ps1
+解决：
+1) Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+2) .\.venv\Scripts\Activate.ps1
+
+问题 2：pip 安装依赖时出现 ProxyError
+现象：
+- ProxyError('Cannot connect to proxy.', FileNotFoundError(...))
+原因：
+- pip 配置或环境变量设置了无效代理（常见于代理软件卸载残留）
+解决：
+1) pip config list 检查是否有 proxy
+2) pip config unset global.proxy / user.proxy
+3) 清理 HTTP_PROXY / HTTPS_PROXY 环境变量
+
+问题 3：Windows 安装 faiss-cpu 失败
+现象：
+- ERROR: No matching distribution found for faiss-cpu
+原因：
+- PyPI 上 Windows 可能没有匹配你 Python 版本的 faiss 轮子
+解决：
+- 用 hnswlib 替代 faiss 作为向量索引（学习原理足够）
+- 或改用 WSL/Ubuntu 环境安装 faiss
+
+问题 4：检索结果重复、相似 chunk 太多
+原因：
+- overlap 导致相邻 chunk 高度重复
+解决：
+- 做去重（例如基于 source+chunk_id 或相似度阈值）
+- 引入 MMR（最大边际相关性）在 top_k 前做多样性选择
+
+问题 5：答案引用资料但仍然偏题
+原因：
+- prompt 没约束、上下文噪声大、或者检索错了
+解决：
+- 让模型必须引用片段编号
+- “无法从资料得出结论就说不知道”
+- 对检索结果 rerank（比如 cross-encoder）

@@ -1,0 +1,74 @@
+示例接口规范（API Spec）
+
+背景
+这是一个虚构的“知识库问答服务”接口规范，用于测试 RAG 里对接口文档的检索能力。
+
+1. 文档入库接口
+POST /v1/ingest
+Content-Type: application/json
+
+Request JSON:
+{
+  "collection": "default",
+  "source": "manual",
+  "documents": [
+    {"doc_id": "intro", "text": "...."},
+    {"doc_id": "faq", "text": "...."}
+  ]
+}
+
+Response JSON:
+{
+  "ok": true,
+  "collection": "default",
+  "ingested_docs": 2,
+  "chunks": 37
+}
+
+2. 检索接口
+POST /v1/retrieve
+Content-Type: application/json
+
+Request JSON:
+{
+  "collection": "default",
+  "query": "怎么排查检索不到？",
+  "top_k": 5
+}
+
+Response JSON:
+{
+  "ok": true,
+  "top_k": 5,
+  "results": [
+    {"doc_id": "faq", "chunk_id": 3, "score": 0.82, "text": "..."},
+    {"doc_id": "intro", "chunk_id": 1, "score": 0.76, "text": "..."}
+  ]
+}
+
+3. 问答接口（RAG）
+POST /v1/ask
+Content-Type: application/json
+
+Request JSON:
+{
+  "collection": "default",
+  "query": "RAG 为什么能减少胡说？",
+  "top_k": 4,
+  "max_tokens": 512
+}
+
+Response JSON:
+{
+  "ok": true,
+  "answer": "....",
+  "citations": [
+    {"doc_id": "intro", "chunk_id": 0},
+    {"doc_id": "faq", "chunk_id": 2}
+  ]
+}
+
+错误码
+- 4001：参数缺失（query 为空或 top_k 非法）
+- 5002：索引不存在（未 ingest 或索引文件损坏）
+- 5003：模型不可用（embedding/LLM 加载失败）
