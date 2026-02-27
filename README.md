@@ -159,6 +159,3 @@ $env:EMBEDDING_BATCH_SIZE = "10"
 python src/ingest.py
 ```
 
-## 5. 安全建议
-
-你在对话中曾明文暴露过 key，建议立刻在对应平台轮换（重置）key。
